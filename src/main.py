@@ -5,8 +5,11 @@ from consultas import (
     filtrar_por_continente, filtrar_por_rango_poblacion,
     filtrar_por_rango_superficie, ordenar_paises, estadisticas_basicas
 )
+from utilidades import normalizar_str, ruta_absoluta_relativa
 
-CSV_BASE = "paises.csv"
+
+CSV_BASE = ruta_absoluta_relativa('dataset.csv')
+
 
 def _input_int(msg: str) -> int:
     while True:
