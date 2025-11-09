@@ -35,12 +35,28 @@ def menu ():
     
 
 def menu_principal():
-    paises = cargar_paises_desde_csv()
+    CSV_PATH = os.path.join(os.path.dirname(__file__), "dataset.csv")
+
+
+    paises, errores = cargar_paises_desde_csv(CSV_PATH)
+
+    if paises and not isinstance(paises[0], dict):
+        paises = [
+            {
+                "nombre": str(p[0]).strip(),
+                "poblacion": int(p[1]),
+                "superficie": int(p[2]),
+                "continente": str(p[3]).strip(),
+            }
+            for p in paises
+        ]
     menu()
+
+
 
     while True:
         
-        opcion = input("Ingrese una opcion (1-9)").strip()
+        opcion = input("Ingrese una opcion (1-9): ").strip()
         
         if not opcion.isdigit():
             print("Error... Debe ingresar un numero del 1 al 9.")
@@ -340,35 +356,27 @@ def menu_principal():
                     print("---------------------------")
 
 
+            case 8:
+                print("=== ESTADISTICAS BASICAS ===")
+                stats = estadisticas_basicas(paises)
+
+                print("Total de paises:", len(paises))
+                print("Promedio de poblacion:", stats["promedio_poblacion"])
+                print("Promedio de superficie:", stats["promedio_superficie"])
+
+                mayor = stats["mayor_poblacion"]
+                menor = stats["menor_poblacion"]
+
+                print("País con mayor población:", mayor["nombre"], "-", mayor["poblacion"])
+                print("País con menor población:", menor["nombre"], "-", menor["poblacion"])
+
+                print("Cantidad por continente:")
+                for continente, cantidad in stats["cantidad_por_continente"].items():
+                    print(" ", continente, ":", cantidad)
 
 
 
 
-""""
-Funcion buscar_paises
-
-1-Obtener listado de paises y almacenarlo en una variable
-2-Preguntar al usuario que pais quiere buscar
-3-Enviar parametro a consulta
-4-Dar mensaje de exito/error
-"""
-
-"""
-Funcion de filtrar por continente
-1-Obtener listado de paises
-2-Preguntar al usuario que continente quiere filtrar
-3-Enviar parametro a consulta
-4-Dar mensaje de exito/error
-"""
-
-"""
-Funcion filtrado por rango de poblacion
-
-1-Obtener listado de paises
-2-Preguntar al usuario rango minimo de poblacion
-3-Preguntar al usuario rango maximo de poblacion
-4-Enviar parametro a consulta
-5-Dar mensaje de exito-error
-"""
-
+if __name__ == "__main__":
+    menu_principal()
 
