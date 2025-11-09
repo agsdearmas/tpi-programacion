@@ -1,72 +1,221 @@
-def cargar_paises_desde_csv(ruta_csv: str) -> tuple:
+import os
+from utilidades import normalizar_str, es_entero_valido
+
+CSV_HEADERS = ('nombre','poblacion','superficie','continente')
+
+
+def _crear_dataset(ruta_csv):
+    """Recibe un path y crea el archivo dataset."""
+    f = open(ruta_csv, 'w', encoding='utf-8')
+    encabezados = 'nombre,población,superficie,continente\n' 
+    f.write(encabezados)
+    f.close()
+
+
+def cargar_paises_desde_csv(ruta_csv: str) -> list:
     """
-    Lee el CSV y retorna (lista_paises, lista_errores).
-    Cada país es dict: {'nombre':str,'poblacion':int,'superficie':int,'continente':str}
-    Si detecta una línea de encabezado, la ignora automáticamente.
+    Lee el CSV y retorna (lista_paises).
+    Cada pais es dict: {'nombre':str,'poblacion':int,'superficie':int,'continente':str}
+    Si detecta una linea de encabezado, la ignora automaticamente.
     """
-    pass
+    paises = []
+
+    if not os.path.exists(ruta_csv):
+        _crear_dataset(ruta_csv)
+
+    with open(ruta_csv, 'r', encoding='utf-8') as f:
+        lineas = f.readlines()
+    
+    if not lineas:
+        _crear_dataset(ruta_csv)
+        return paises
+
+    # Verificar si la primera linea es un header
+    primera = lineas[0].strip().lower()
+    tiene_header = False
+    if primera.replace(' ', '') in (
+        'nombre,poblacion,superficie,continente',
+        'nombre,población,superficie,continente'
+    ):
+        tiene_header = True
+
+    # Salteamos headers
+    inicio = 1 if tiene_header else 0
+
+    for _, raw in enumerate(lineas[inicio:], start=inicio + 1):
+        linea = raw.strip()
+        if linea == '':
+            continue
+        partes = [p.strip() for p in linea.split(',')]
+
+        nombre, poblacion_s, superficie_s, continente = partes
+        nombre = normalizar_str(nombre)
+        continente = normalizar_str(continente)
+
+        paises.append({
+            'nombre': nombre,
+            'poblacion': int(poblacion_s),
+            'superficie': int(superficie_s),
+            'continente': continente
+        })
+
+    return paises
 
 
 def guardar_paises_en_csv(ruta_csv: str, lista_paises: list) -> bool:
     """
     Sobrescribe CSV con lista_paises.
-    Devuelve True si escritura OK, False si no se pudo (p.ej. ruta inválida).
+    Devuelve True si escritura OK, False si no se pudo (ej. ruta invalida).
     """
-    pass
+
+    if not os.path.exists(ruta_csv):
+        return False
+
+    encabezado = "nombre,poblacion,superficie,continente\n"
+
+    with open(ruta_csv, 'w', encoding='utf-8') as f:
+        f.write(encabezado)
+        for p in lista_paises:
+            nombre = p['nombre']
+            pob = str(p['poblacion'])
+            sup = str(p['superficie'])
+            cont = p['continente']
+            f.write(f'{nombre},{pob},{sup},{cont}\n')
+    return True
 
 
-def agregar_pais(lista_paises: list, pais: dict) -> tuple:
+def agregar_pais(lista_paises: list, pais: dict) -> bool:
     """
-    Agrega un país a la lista en memoria si no existe por nombre exacto.
+    Agrega un pais a la lista en memoria si no existe por nombre exacto.
     Retorna (True, mensaje) o (False, mensaje_error).
-    No usa excepciones.
     """
-    pass
+    nombre = pais.get('nombre','').strip()
+    if not nombre:
+        return False, 'Error: El nombre no puede estar vacío.'
+
+    for p in lista_paises:
+        if p['nombre'].lower() == nombre.lower():
+            return False, f'Error: El país "{nombre}" ya existe.'
+
+    if not isinstance(pais.get('poblacion'), int) or not isinstance(pais.get('superficie'), int):
+        return False, 'Error: Población y superficie deben ser enteros.'
+
+    pais['continente'] = pais.get('continente','').strip().title()
+    lista_paises.append({
+        'nombre': nombre.title(),
+        'poblacion': pais['poblacion'],
+        'superficie': pais['superficie'],
+        'continente': pais['continente']
+    })
+    return True, f'País "{nombre}" agregado correctamente.'
 
 
-def actualizar_pais(lista_paises: list, nombre_buscar: str, nueva_pob: int, nueva_sup: int) -> tuple:
+def actualizar_pais(lista_paises: list, nombre_buscar: str, nueva_pob: int, nueva_sup: int) -> bool:
     """
-    Actualiza poblacion y superficie de primer país que coincida exactamente por nombre.
+    Actualiza poblacion y superficie de primer pais que coincida exactamente por nombre.
     Retorna (True,msg) o (False,msg).
     """
-    pass
+    if not nombre_buscar:
+        return False, 'Error: Nombre de búsqueda vacío.'
+
+    for p in lista_paises:
+        if p['nombre'].lower() == nombre_buscar.lower():
+            p['poblacion'] = nueva_pob
+            p['superficie'] = nueva_sup
+            return True, f'País "{p["nombre"]}" actualizado.'
+    return False, f'Error: País "{nombre_buscar}" no encontrado.'
 
 
 def buscar_paises(lista_paises: list, termino: str) -> list:
     """
-    Búsqueda por nombre (coincidencia parcial, case-insensitive).
-    Retorna lista de países que cumplan.
+    Busqueda por nombre (coincidencia parcial).
+    Retorna lista de paises que cumplan.
     """
-    pass
+    termino = (termino or '').strip().lower()
+    if termino == '':
+        return []
+    resultado = []
+    for p in lista_paises:
+        if termino in p['nombre'].lower():
+            resultado.append(p)
+    return resultado
 
 
 def filtrar_por_continente(lista_paises: list, continente: str) -> list:
-    pass
+    continente = (continente or '').strip().lower()
+    if continente == '':
+        return []
+    return [p for p in lista_paises if p['continente'].lower() == continente]
 
 
 def filtrar_por_rango_poblacion(lista_paises: list, min_p: int, max_p: int) -> list:
-    pass
+    return [p for p in lista_paises if p['poblacion'] >= min_p and p['poblacion'] <= max_p]
 
 
 def filtrar_por_rango_superficie(lista_paises: list, min_s: int, max_s: int) -> list:
-    pass
+    return [p for p in lista_paises if p['superficie'] >= min_s and p['superficie'] <= max_s]
 
 
 def ordenar_paises(lista_paises: list, clave: str, descendente: bool=False) -> list:
     """
-    Ordena por 'nombre','poblacion' o 'superficie'.
+    Ordena por 'nombre', 'poblacion' o 'superficie'.
     No modifica la lista original: retorna copia ordenada.
     """
-    pass
+    if clave not in ('nombre', 'poblacion', 'superficie'):
+        return lista_paises[:]
+
+    # Se definen funciones auxiliares como claves de ordenamiento
+    def clave_nombre(pais):
+        return pais['nombre'].lower()
+
+    def clave_generica(pais):
+        return pais[clave]
+
+    if clave == 'nombre':
+        return sorted(lista_paises, key=clave_nombre, reverse=descendente)
+    else:
+        return sorted(lista_paises, key=clave_generica, reverse=descendente)
 
 
 def estadisticas_basicas(lista_paises: list) -> dict:
     """
     Devuelve dict con:
-    - mayor_poblacion: país (dict)
-    - menor_poblacion: país (dict)
+    - mayor_poblacion: pais (dict)
+    - menor_poblacion: pais (dict)
     - promedio_poblacion: float
     - promedio_superficie: float
     - cantidad_por_continente: dict
     """
-    pass
+    res = {
+        'mayor_poblacion': None,
+        'menor_poblacion': None,
+        'promedio_poblacion': 0.0,
+        'promedio_superficie': 0.0,
+        'cantidad_por_continente': {}
+    }
+    if not lista_paises:
+        return res
+
+    mayor = lista_paises[0]
+    menor = lista_paises[0]
+    suma_p = 0
+    suma_s = 0
+    contador = 0
+    por_cont = {}
+    for p in lista_paises:
+        if p['poblacion'] > mayor['poblacion']:
+            mayor = p
+        if p['poblacion'] < menor['poblacion']:
+            menor = p
+        suma_p += p['poblacion']
+        suma_s += p['superficie']
+        contador += 1
+        cont = p['continente']
+        por_cont[cont] = por_cont.get(cont, 0) + 1
+
+    res['mayor_poblacion'] = mayor
+    res['menor_poblacion'] = menor
+    res['promedio_poblacion'] = suma_p / contador
+    res['promedio_superficie'] = suma_s / contador
+    res['cantidad_por_continente'] = por_cont
+    return res
