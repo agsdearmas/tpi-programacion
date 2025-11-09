@@ -3,25 +3,32 @@ from utilidades import normalizar_str, es_entero_valido
 
 CSV_HEADERS = ('nombre','poblacion','superficie','continente')
 
-def cargar_paises_desde_csv(ruta_csv: str) -> tuple:
+
+def _crear_dataset(ruta_csv):
+    """Recibe un path y crea el archivo dataset."""
+    f = open(ruta_csv, 'w', encoding='utf-8')
+    encabezados = 'nombre,población,superficie,continente\n' 
+    f.write(encabezados)
+    f.close()
+
+
+def cargar_paises_desde_csv(ruta_csv: str) -> list:
     """
-    Lee el CSV y retorna (lista_paises, lista_errores).
+    Lee el CSV y retorna (lista_paises).
     Cada pais es dict: {'nombre':str,'poblacion':int,'superficie':int,'continente':str}
     Si detecta una linea de encabezado, la ignora automaticamente.
     """
     paises = []
-    errores = []
 
     if not os.path.exists(ruta_csv):
-        errores.append(f'No existe archivo: {ruta_csv}')
-        return paises, errores
+        _crear_dataset(ruta_csv)
 
     with open(ruta_csv, 'r', encoding='utf-8') as f:
         lineas = f.readlines()
-
+    
     if not lineas:
-        errores.append('Archivo vacío')
-        return paises, errores
+        _crear_dataset(ruta_csv)
+        return paises
 
     # Verificar si la primera linea es un header
     primera = lineas[0].strip().lower()
@@ -32,28 +39,18 @@ def cargar_paises_desde_csv(ruta_csv: str) -> tuple:
     ):
         tiene_header = True
 
-    # Si tiene header, saltamos esa linea al procesar
+    # Salteamos headers
     inicio = 1 if tiene_header else 0
 
-    for idx, raw in enumerate(lineas[inicio:], start=inicio + 1):
+    for _, raw in enumerate(lineas[inicio:], start=inicio + 1):
         linea = raw.strip()
         if linea == '':
             continue
         partes = [p.strip() for p in linea.split(',')]
-        if len(partes) != 4:
-            errores.append(f'Linea {idx}: cantidad de columnas != 4 -> "{linea}"')
-            continue
 
         nombre, poblacion_s, superficie_s, continente = partes
         nombre = normalizar_str(nombre)
         continente = normalizar_str(continente)
-
-        if not nombre:
-            errores.append(f'Linea {idx}: nombre vacío -> "{linea}"')
-            continue
-        if not es_entero_valido(poblacion_s) or not es_entero_valido(superficie_s):
-            errores.append(f'Linea {idx}: población/superficie no enteros -> "{linea}"')
-            continue
 
         paises.append({
             'nombre': nombre,
@@ -62,7 +59,7 @@ def cargar_paises_desde_csv(ruta_csv: str) -> tuple:
             'continente': continente
         })
 
-    return paises, errores
+    return paises
 
 
 def guardar_paises_en_csv(ruta_csv: str, lista_paises: list) -> bool:
@@ -71,11 +68,13 @@ def guardar_paises_en_csv(ruta_csv: str, lista_paises: list) -> bool:
     Devuelve True si escritura OK, False si no se pudo (ej. ruta invalida).
     """
 
-    carpeta = os.path.dirname(os.path.abspath(ruta_csv))
-    if not os.path.isdir(carpeta):
+    if not os.path.exists(ruta_csv):
         return False
 
+    encabezado = "nombre,poblacion,superficie,continente\n"
+
     with open(ruta_csv, 'w', encoding='utf-8') as f:
+        f.write(encabezado)
         for p in lista_paises:
             nombre = p['nombre']
             pob = str(p['poblacion'])
@@ -85,45 +84,46 @@ def guardar_paises_en_csv(ruta_csv: str, lista_paises: list) -> bool:
     return True
 
 
-def agregar_pais(lista_paises: list, pais: dict) -> tuple:
+def agregar_pais(lista_paises: list, pais: dict) -> bool:
     """
     Agrega un pais a la lista en memoria si no existe por nombre exacto.
     Retorna (True, mensaje) o (False, mensaje_error).
     """
     nombre = pais.get('nombre','').strip()
     if not nombre:
-        return False, 'El nombre no puede estar vacío.'
+        return False, 'Error: El nombre no puede estar vacío.'
 
     for p in lista_paises:
         if p['nombre'].lower() == nombre.lower():
-            return False, f'El país "{nombre}" ya existe.'
+            return False, f'Error: El país "{nombre}" ya existe.'
 
     if not isinstance(pais.get('poblacion'), int) or not isinstance(pais.get('superficie'), int):
-        return False, 'Población y superficie deben ser enteros.'
+        return False, 'Error: Población y superficie deben ser enteros.'
 
-    pais['continente'] = pais.get('continente','').strip()
+    pais['continente'] = pais.get('continente','').strip().title()
     lista_paises.append({
-        'nombre': nombre,
+        'nombre': nombre.title(),
         'poblacion': pais['poblacion'],
         'superficie': pais['superficie'],
         'continente': pais['continente']
     })
-    return True, f'País "{nombre}" agregado.'
+    return True, f'País "{nombre}" agregado correctamente.'
 
 
-def actualizar_pais(lista_paises: list, nombre_buscar: str, nueva_pob: int, nueva_sup: int) -> tuple:
+def actualizar_pais(lista_paises: list, nombre_buscar: str, nueva_pob: int, nueva_sup: int) -> bool:
     """
     Actualiza poblacion y superficie de primer pais que coincida exactamente por nombre.
     Retorna (True,msg) o (False,msg).
     """
     if not nombre_buscar:
-        return False, 'Nombre de búsqueda vacío.'
+        return False, 'Error: Nombre de búsqueda vacío.'
+
     for p in lista_paises:
         if p['nombre'].lower() == nombre_buscar.lower():
             p['poblacion'] = nueva_pob
             p['superficie'] = nueva_sup
             return True, f'País "{p["nombre"]}" actualizado.'
-    return False, f'País "{nombre_buscar}" no encontrado.'
+    return False, f'Error: País "{nombre_buscar}" no encontrado.'
 
 
 def buscar_paises(lista_paises: list, termino: str) -> list:
