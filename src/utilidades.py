@@ -22,3 +22,10 @@ def ruta_absoluta_relativa(archivo_relativo: str) -> str:
     """Devuelve ruta absoluta partiendo del modulo actual."""
     base = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(base, archivo_relativo)
+
+def _input_int(msg: str) -> int:
+    while True:
+        num = input(msg).strip()
+        if num.isdigit():
+            return int(num)
+        print("Error: Ingrese un numero entero positivo.")
